@@ -46,8 +46,8 @@ def main(gpu, ngpus_per_node, config, args):
 
     transform = Compose([ToTensor(), Normalize(config.image_mean, config.image_std)])
 
-    cityscapes = Cityscapes(root=config.city_root_path, split="val", transform=transform)
-    evaluator = SlidingEval(config, device=0 if engine.local_rank < 0 else engine.local_rank)
+    # cityscapes = Cityscapes(root=config.city_root_path, split="val", transform=transform)
+    # evaluator = SlidingEval(config, device=0 if engine.local_rank < 0 else engine.local_rank)
     fishyscapes_ls = Fishyscapes(split='LostAndFound', root=config.fishy_root_path, transform=transform)
     fishyscapes_static = Fishyscapes(split='Static', root=config.fishy_root_path, transform=transform)
 
@@ -65,8 +65,8 @@ def main(gpu, ngpus_per_node, config, args):
       the performance reported in the GitHub. )
     # 2). we follow Meta-OoD to use single scale validation for OoD dataset, for fair comparison.
     """
-    valid_epoch(model=model, engine=engine, test_set=cityscapes, my_wandb=None,
-                evaluator=evaluator, logger=logger)
+    # valid_epoch(model=model, engine=engine, test_set=cityscapes, my_wandb=None,
+    #             evaluator=evaluator, logger=logger)
 
     valid_anomaly(model=model, epoch=0, test_set=fishyscapes_ls, data_name='Fishyscapes_ls',
                   my_wandb=None, logger=logger)

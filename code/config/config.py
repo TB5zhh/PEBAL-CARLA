@@ -15,7 +15,7 @@ C.root_dir = os.path.realpath(".")
 """Data Dir and Weight Dir"""
 C.city_root_path = '../dataset/city_scape'  # path/to/your/city_scape
 C.coco_root_path = '/media/yuyuan/Applications/pebal/coco'  # path/to/your/coco
-C.fishy_root_path = '/media/yuyuan/Applications/pebal/fishyscapes'  # path/to/your/fishy
+C.fishy_root_path = '/home/tb5zhh/workspace/datasets/final_dataset/fishyscapes'  # path/to/your/fishy
 
 C.pebal_weight_path = os.path.join(C.root_dir, 'ckpts', 'pebal', 'best_ad_ckpt.pth')
 C.pretrained_weight_path = os.path.join(C.root_dir, 'ckpts', 'pretrained_ckpts', 'cityscapes_best.pth')
