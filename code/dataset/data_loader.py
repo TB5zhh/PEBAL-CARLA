@@ -110,7 +110,7 @@ def get_mix_loader(engine, collate_fn=None, augment=True, cs_root=None,
     # train_dataset = CityscapesCocoMix(split='train', preprocess=train_preprocess, cs_root=cs_root,
     #                                   coco_root=coco_root, subsampling_factor=0.1)
 
-    train_dataset = CARLASimulated('/data/anomaly_dataset_v2', '/data/filelists/minimal', preprocess=train_preprocess)
+    train_dataset = CARLASimulated('/data/anomaly_dataset_v2', '/data/filelists/full_1031_vanilla_s10', preprocess=train_preprocess)
 
     train_sampler = None
     is_shuffle = True
@@ -741,29 +741,72 @@ class CityscapesCocoMix(BaseDataset):
         return fmt_str.strip()
 
 class CARLASimulated(BaseDataset):
-    void_ind = [254]
+    train_id_out = 254
+    void_ind = None # Unused variable
+    num_eval_classes = 23
 
-    def __init__(self, dataset_root, filelist_dir, preprocess):
+    def __init__(self, dataset_root, filelist_dir, preprocess=None, split='train', variant='joint'):
         self.dataset_root = dataset_root
         self.filelist_dir = filelist_dir
         self.preprocess = preprocess
         def read(filepath: str) -> list:
             with open(filepath) as f:
                 return [i.strip() for i in f.readlines()]
-        self.images = []
-        self.images += read(os.path.join(self.filelist_dir, 'train_seg_image.txt')) 
-        self.images += read(os.path.join(self.filelist_dir, 'train_ood_image.txt'))
-        self.targets = []
-        self.targets += read(os.path.join(self.filelist_dir, 'train_seg_labels.txt')) 
-        self.targets += read(os.path.join(self.filelist_dir, 'train_ood_labels.txt'))
-    
+        self.variant = variant
+            
+        self.in_images = []
+        self.in_targets = []
+        self.out_images = []
+        self.out_targets = []
+        if split == 'train':
+            if variant == 'joint' or variant == 'seg':
+                self.in_images += read(os.path.join(self.filelist_dir, 'train_seg_image.txt')) 
+                self.in_targets += read(os.path.join(self.filelist_dir, 'train_seg_labels.txt')) 
+            if variant == 'joint' or variant == 'ood':
+                self.out_images += read(os.path.join(self.filelist_dir, 'train_ood_image.txt'))
+                self.out_targets += read(os.path.join(self.filelist_dir, 'train_ood_labels.txt'))
+        elif split == 'val':
+            if variant == 'joint' or variant == 'seg':
+                self.in_images += read(os.path.join(self.filelist_dir, 'val_seg_image.txt')) 
+                self.in_targets += read(os.path.join(self.filelist_dir, 'val_seg_labels.txt')) 
+            if variant == 'joint' or variant == 'ood':
+                self.out_images += read(os.path.join(self.filelist_dir, 'val_ood_image.txt')) 
+                self.out_targets += read(os.path.join(self.filelist_dir, 'val_ood_labels.txt'))
+        else:
+            raise NotImplementedError
 
     def __getitem__(self, index):
-        image = np.array(Image.open(os.path.join(self.dataset_root, self.images[index])))
-        target = np.array(Image.open(os.path.join(self.dataset_root, self.targets[index]))).astype(np.uint8)
-        target[target == 23] = 254
-        is_ood = (target == 254).any()
-        img, gt, _, extra_dict = self.preprocess(image, target)
+        if self.variant == 'joint':
+            if index % 2 == 0:
+                name = self.in_images[(index // 2) % len(self.in_images)]
+                img = np.array(Image.open(os.path.join(self.dataset_root, self.in_images[(index // 2) % len(self.in_images)])))
+                gt = np.array(Image.open(os.path.join(self.dataset_root, self.in_targets[(index // 2) % len(self.in_targets)]))).astype(np.uint8)
+            else:
+                name = self.out_images[(index // 2) % len(self.out_images)]
+                img = np.array(Image.open(os.path.join(self.dataset_root, self.out_images[(index // 2) % len(self.out_images)])))
+                gt = np.array(Image.open(os.path.join(self.dataset_root, self.out_targets[(index // 2) % len(self.out_targets)]))).astype(np.uint8)
+        elif self.variant == 'seg':
+            name = self.in_images[index]
+            img = np.array(Image.open(os.path.join(self.dataset_root, self.in_images[index])))
+            gt = np.array(Image.open(os.path.join(self.dataset_root, self.in_targets[index]))).astype(np.uint8)
+        elif self.variant == 'ood':
+            name = self.out_images[index]
+            img = np.array(Image.open(os.path.join(self.dataset_root, self.out_images[index])))
+            gt = np.array(Image.open(os.path.join(self.dataset_root, self.out_targets[index]))).astype(np.uint8)
+        else:
+            raise NotImplementedError
+        gt[gt == 0] = 254
+        gt[gt == 23] = 254
+        is_ood = (gt == 254).any()
+        if self.preprocess is not None:
+            out = self.preprocess(img, gt)
+            if len(out) == 4:
+                img, gt, _, extra_dict = out
+            else:
+                img, gt = out
+                extra_dict = None
+        else:
+            extra_dict = None
         img = torch.from_numpy(np.ascontiguousarray(img)).float()
         gt = torch.from_numpy(np.ascontiguousarray(gt)).long()
         if extra_dict is not None:
@@ -777,9 +820,25 @@ class CARLASimulated(BaseDataset):
 
         # from IPython import embed
         # embed()
-        ret_dict = dict(data=img, label=gt, fn=self.targets[index], n=len(self.images), is_ood=is_ood)
-        ret_dict.update(**extra_dict)
+        ret_dict = dict(data=img, label=gt, fn=name, n=self.__len__(), is_ood=is_ood)
+        if extra_dict is not None:
+            ret_dict.update(**extra_dict)
         return ret_dict
 
     def __len__(self):
-        return len(self.images)
+        if self.variant == 'joint':
+            return 2 * max(len(self.in_images), len(self.out_images))
+        else:
+            return max(len(self.in_images), len(self.out_images))
+
+class CARLASimulatedSegTest(CARLASimulated):
+    def __getitem__(self, index):
+        ret_dict = super().__getitem__(index)
+        return ret_dict['data'], ret_dict['label']
+
+class CARLASimulatedOODTest(CARLASimulatedSegTest):
+    train_id_in = 0
+    def __getitem__(self, index):
+        img, gt = super().__getitem__(index)
+        gt[gt != self.train_id_out] = self.train_id_in
+        return img, gt

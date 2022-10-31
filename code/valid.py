@@ -36,7 +36,6 @@ def valid_anomaly(model, test_set, data_name=None, epoch=None, my_wandb=None, lo
     # evaluation
     ood_gts = np.array(ood_gts_list)
     anomaly_scores = np.array(anomaly_score_list)
-
     roc_auc, prc_auc, fpr = eval_ood_measure(anomaly_scores, ood_gts, test_set.train_id_in, test_set.train_id_out)
 
     curr_info['{}_auroc'.format(data_name)] = roc_auc
@@ -55,9 +54,9 @@ def valid_anomaly(model, test_set, data_name=None, epoch=None, my_wandb=None, lo
     return roc_auc, prc_auc, fpr
 
 
-def valid_epoch(model, engine, test_set, my_wandb, evaluator=None, logger=None, transform=None):
+def valid_epoch(model, engine, test_set, my_wandb, evaluator=None, logger=None, transform=None, num_classes=19, data_name="cityscapes"):
     model.eval()
-    logger.info("validating cityscapes dataset ...")
+    logger.info(f"validating {data_name} dataset ...")
 
     curr_info = {}
     all_results = []
@@ -68,7 +67,7 @@ def valid_epoch(model, engine, test_set, my_wandb, evaluator=None, logger=None, 
             img, label = test_set[idx]
             img, label = img.permute(1, 2, 0).numpy(), label.numpy()
             pred = evaluator(img, model)
-            hist_tmp, labeled_tmp, correct_tmp = hist_info(19, pred, label)
+            hist_tmp, labeled_tmp, correct_tmp = hist_info(num_classes, pred, label)
             results_dict = {'hist': hist_tmp, 'labeled': labeled_tmp, 'correct': correct_tmp}
             all_results.append(results_dict)
 

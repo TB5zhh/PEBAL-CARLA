@@ -2,7 +2,7 @@ import os
 import numpy
 from easydict import EasyDict
 
-from secret import *
+from config.secret import *
 
 C = EasyDict()
 config = C

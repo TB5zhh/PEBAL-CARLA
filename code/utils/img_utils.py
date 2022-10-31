@@ -23,7 +23,7 @@ class Compose(object):
     def __call__(self, img, mask, *inputs):
         """Returns images that are augmented with the given augmentations."""
         # img, mask = Image.fromarray(img, mode='RGB'), Image.fromarray(mask, mode='L')
-        assert img.size == mask.size
+        # assert img.shape[:2] == mask.shape[:2]
         for a in self.augmentations:
             img, mask, inputs = a(img, mask, *inputs)
         return (img, mask, *inputs)

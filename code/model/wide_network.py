@@ -111,12 +111,12 @@ class DeepWV3Plus(torch.nn.Module):
             Norm2d(256),
             nn.ReLU(inplace=True),
             nn.Conv2d(256, num_classes, kernel_size=1, bias=False))
-
+        self.num_classes = num_classes
         initialize_weights(self.final)
 
     def compute_anomaly_score(self, score):
-        score = score.squeeze()[:19]
-        anomaly_score = -(1. * torch.logsumexp(score[:19, :, :] / 1., dim=0))
+        score = score.squeeze()[:self.num_classes]
+        anomaly_score = -(1. * torch.logsumexp(score[:self.num_classes, :, :] / 1., dim=0))
 
         # regurlar gaussian smoothing
         anomaly_score = anomaly_score.unsqueeze(0)

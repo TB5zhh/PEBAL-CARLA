@@ -141,7 +141,7 @@ class Engine(object):
         except:
             pass
 
-    def restore_checkpoint(self, extra_channel=False, eval=False):
+    def restore_checkpoint(self, extra_channel=False, eval=False, num_classes=19):
         t_start = time.time()
         continue_state_object = self.continue_state_object
         self.logger.critical('restoring ckpt from pretrained file {}.'.format(continue_state_object))
@@ -157,7 +157,7 @@ class Engine(object):
             self.state.model = on_load_checkpoint(model=self.state.model, checkpoint=tmp['model'])
         else:
             self.state.model = load_model(self.state.model, tmp['state_dict'], True, strict=False,
-                                          extra_channel=extra_channel)
+                                          extra_channel=extra_channel, num_classes=num_classes)
 
         self.state.epoch = 0  # tmp['epoch'] + 1
         self.state.iteration = 0  # tmp['iteration']

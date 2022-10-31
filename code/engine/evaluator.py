@@ -18,7 +18,7 @@ class SlidingEval(torch.nn.Module):
     def forward(self, img, model, device=None):
         ori_rows, ori_cols, c = img.shape
         # fix to be 19, for inlier testing.
-        num_class = 19
+        num_class = self.config.num_classes - 1
         processed_pred = numpy.zeros((ori_rows, ori_cols, num_class))
 
         # it is single scale
@@ -69,7 +69,7 @@ class SlidingEval(torch.nn.Module):
                 end_time = time.time()
                 time_len = end_time - start_time
                 # remove last reservation channel for OoD
-                score = score.squeeze()[:19]
+                score = score.squeeze()[:self.config.num_classes-1]
 
                 # if self.config.eval_flip:
                 #     input_data = input_data.flip(-1)
@@ -87,7 +87,7 @@ class SlidingEval(torch.nn.Module):
             crop_size = (crop_size, crop_size)
 
         # remove last reservation channel for OoD
-        class_num = 19
+        class_num = self.config.num_classes - 1
         if long_size <= min(crop_size[0], crop_size[1]):
             input_data, margin = self.process_image(img, crop_size)  # pad image
             score, _ = self.val_func_process(input_data, model, device)
@@ -136,7 +136,7 @@ class SlidingEval(torch.nn.Module):
         return data_output
 
     def compute_metric(self, results):
-        hist = numpy.zeros((19, 19))
+        hist = numpy.zeros((self.config.num_classes - 1, self.config.num_classes - 1))
         correct = 0
         labeled = 0
         count = 0

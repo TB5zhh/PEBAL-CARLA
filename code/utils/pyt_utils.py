@@ -302,7 +302,7 @@ def eval_ood_measure(conf, seg_label, train_id_in, train_id_out, mask=None):
 
 
 def load_model(model, model_file, is_restore=False,
-               strict=True, extra_channel=False):
+               strict=True, extra_channel=False, num_classes=19):
     t_start = time.time()
 
     if model_file is None:
@@ -330,32 +330,32 @@ def load_model(model, model_file, is_restore=False,
             # print(name, model_state_dict[name].shape)
             new_state_dict[name] = v
             if k == "module.final.6.weight" and extra_channel:
-                new_state_dict[name] = torch.nn.init.kaiming_normal_(torch.zeros([20, 256, 1, 1]))
-                new_state_dict[name][:19, :, :, :] = v
+                new_state_dict[name] = torch.nn.init.kaiming_normal_(torch.zeros([num_classes + 1, 256, 1, 1]))
+                new_state_dict[name][:v.shape[0], :, :, :] = v
                 print(k, state_dict[k].shape)
                 print(name, model_state_dict[name].shape, "partial loading ...")
 
             if k == "module.final2.0.weight" and extra_channel:
-                new_state_dict[name] = torch.nn.init.kaiming_normal_(torch.zeros([20, 256, 1, 1]))
-                new_state_dict[name][:19, :, :, :] = v
+                new_state_dict[name] = torch.nn.init.kaiming_normal_(torch.zeros([num_classes + 1, 256, 1, 1]))
+                new_state_dict[name][:v.shape[0], :, :, :] = v
                 print(k, state_dict[k].shape)
                 print(name, model_state_dict[name].shape, "partial loading ...")
 
             # if k ==  "module.final2.0.bias" and extra_channel:
-            #     new_state_dict[name] = torch.zeros([20])
-            #     new_state_dict[name][:19] = v
+            #     new_state_dict[name] = torch.zeros([num_classes + 1])
+            #     new_state_dict[name][:v.shape[0]] = v
             #     print(k, state_dict[k].shape)
             #     print(name, model_state_dict[name].shape, "partial loading ...")
 
             if k == "module.dsn.4.weight" and extra_channel:
-                new_state_dict[name] = torch.nn.init.kaiming_normal_(torch.zeros([20, 512, 1, 1]))
-                new_state_dict[name][:19, :, :, :] = v
+                new_state_dict[name] = torch.nn.init.kaiming_normal_(torch.zeros([num_classes + 1, 512, 1, 1]))
+                new_state_dict[name][:v.shape[0], :, :, :] = v
                 print(k, state_dict[k].shape)
                 print(name, model_state_dict[name].shape, "partial loading ...")
 
             # if k ==  "module.dsn.4.0.bias" and extra_channel:
-            #     new_state_dict[name] = torch.zeros([20])
-            #     new_state_dict[name][:19] = v
+            #     new_state_dict[name] = torch.zeros([num_classes + 1])
+            #     new_state_dict[name][:v.shape[0]] = v
             #     print(k, state_dict[k].shape)
             #     print(name, model_state_dict[name].shape, "partial loading ...")
 

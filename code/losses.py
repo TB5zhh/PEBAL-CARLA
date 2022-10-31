@@ -46,11 +46,12 @@ def energy_loss(logits, targets):
 
 
 class Gambler(torch.nn.Module):
-    def __init__(self, reward, device, pretrain=-1, ood_reg=.1):
+    def __init__(self, reward, device, pretrain=-1, ood_reg=.1, num_classes=19):
         super(Gambler, self).__init__()
         self.reward = torch.tensor([reward]).cuda(device)
         self.pretrain = pretrain
         self.ood_reg = ood_reg
+        self.num_classes = num_classes
         self.device = device
 
     def forward(self, pred, targets, wrong_sample=False):
@@ -77,7 +78,7 @@ class Gambler(torch.nn.Module):
             mask = targets == 254
             # mask out each of the ood output channel
             reserve_boosting_energy = torch.add(true_pred, reservation.unsqueeze(1))[mask.unsqueeze(1).
-                repeat(1, 19, 1, 1)]
+                repeat(1, self.num_classes, 1, 1)]
             
             gambler_loss_out = torch.tensor([.0], device=self.device)
             if reserve_boosting_energy.nelement() > 0:

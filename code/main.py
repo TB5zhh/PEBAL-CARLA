@@ -2,7 +2,7 @@ import argparse
 import torch.distributed as dist
 import torch.optim
 from config.config import config
-from dataset.data_loader import Fishyscapes, Cityscapes
+from dataset.data_loader import CARLASimulatedOODTest, CARLASimulatedSegTest, Fishyscapes, Cityscapes, CARLASimulated
 from dataset.data_loader import get_mix_loader
 from engine.engine import Engine
 from engine.evaluator import SlidingEval
@@ -59,13 +59,15 @@ def main(gpu, ngpus_per_node, config, args):
         torch.cuda.manual_seed(seed)
 
     model = Network(config.num_classes, wide=True)
-    gambler_loss = Gambler(reward=[4.5], pretrain=-1, device=engine.local_rank if engine.local_rank >= 0 else 0)
+    gambler_loss = Gambler(reward=[4.5], pretrain=-1, device=engine.local_rank if engine.local_rank >= 0 else 0, num_classes=23) # TODO fix hardcode
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     testing_transform = Compose([ToTensor(), Normalize(config.image_mean, config.image_std)])
-    fishyscapes_ls = Fishyscapes(split='LostAndFound', root=config.fishy_root_path, transform=testing_transform)
-    fishyscapes_static = Fishyscapes(split='Static', root=config.fishy_root_path, transform=testing_transform)
+    # fishyscapes_ls = Fishyscapes(split='LostAndFound', root=config.fishy_root_path, transform=testing_transform)
+    # fishyscapes_static = Fishyscapes(split='Static', root=config.fishy_root_path, transform=testing_transform)
     # cityscapes = Cityscapes(root=config.city_root_path, split="val", transform=testing_transform)
+    val_dataset = CARLASimulatedSegTest('/data/anomaly_dataset_v2', '/data/filelists/full_1031_vanilla_s10', split='val', variant='seg', preprocess=testing_transform)
+    ood_val_dataset = CARLASimulatedOODTest('/data/anomaly_dataset_v2', '/data/filelists/full_1031_vanilla_s10', split='val', variant='ood', preprocess=testing_transform)
 
     # config lr policy
     base_lr = config.lr
@@ -74,7 +76,7 @@ def main(gpu, ngpus_per_node, config, args):
     trainer = Trainer(engine=engine, loss1=gambler_loss, loss2=energy_loss, lr_scheduler=lr_policy,
                       ckpt_dir=config.saved_dir, tensorboard=visual_tool)
 
-    # evaluator = SlidingEval(config, device=0 if engine.local_rank < 0 else engine.local_rank)
+    evaluator = SlidingEval(config, device=0 if engine.local_rank < 0 else engine.local_rank)
 
     if engine.distributed:
         torch.cuda.set_device(engine.local_rank)
@@ -90,7 +92,7 @@ def main(gpu, ngpus_per_node, config, args):
     # starting with the pre-trained weight from https://github.com/NVIDIA/semantic-segmentation/tree/sdcnet
     if engine.continue_state_object:
         engine.register_state(dataloader=None, model=model, optimizer=optimizer)
-        engine.restore_checkpoint(extra_channel=True)
+        engine.restore_checkpoint(extra_channel=True, num_classes=23) # TODO avoid hardcode
         # engine.load_pebal_ckpt(config.pebal_weight_path, model=model)
 
     logger.info('training begin...')
@@ -115,14 +117,17 @@ def main(gpu, ngpus_per_node, config, args):
                 # from the pre-trained ckpt.)
                 # 2). we follow Meta-OoD to use single scale validation in OoD datasets, for fair comparison.
                 """
-                # valid_epoch(model=model, engine=engine, test_set=cityscapes, my_wandb=visual_tool,
-                #             evaluator=evaluator, logger=logger)
+                valid_epoch(model=model, engine=engine, test_set=val_dataset, my_wandb=visual_tool, data_name="CARLA-seg",
+                            evaluator=evaluator, logger=logger, num_classes=23) # TODO avoid hardcode
 
-                valid_anomaly(model=model, epoch=curr_epoch, test_set=fishyscapes_ls, data_name='Fishyscapes_ls',
+                valid_anomaly(model=model, epoch=curr_epoch, test_set=ood_val_dataset, data_name='CARLA-ood',
                               my_wandb=visual_tool, logger=logger)
 
-                valid_anomaly(model=model, epoch=curr_epoch, test_set=fishyscapes_static,
-                              data_name='Fishyscapes_static', my_wandb=visual_tool, logger=logger)
+                # valid_anomaly(model=model, epoch=curr_epoch, test_set=fishyscapes_ls, data_name='Fishyscapes_ls',
+                #               my_wandb=visual_tool, logger=logger)
+
+                # valid_anomaly(model=model, epoch=curr_epoch, test_set=fishyscapes_static,
+                #               data_name='Fishyscapes_static', my_wandb=visual_tool, logger=logger)
 
         if engine.distributed:
             dist.barrier()
