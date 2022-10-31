@@ -2,6 +2,8 @@ import os
 import numpy
 from easydict import EasyDict
 
+from secret import *
+
 C = EasyDict()
 config = C
 cfg = C
@@ -26,7 +28,7 @@ C.bn_eps = 1e-5
 C.bn_momentum = 0.1
 
 """Image Config"""
-C.num_classes = 19 + 1  # NOTE: 1 more channel for gambler loss
+C.num_classes = 23 + 1  # NOTE: 1 more channel for gambler loss
 C.image_mean = numpy.array([0.485, 0.456, 0.406])  # 0.485, 0.456, 0.406
 C.image_std = numpy.array([0.229, 0.224, 0.225])
 
@@ -64,13 +66,13 @@ C.display_iter = 50
 
 """Wandb Config"""
 # Specify you wandb environment KEY; and paste here
-C.wandb_key = "your wandb key"
+C.wandb_key = WANDB_KEY
 
 # Your project [work_space] name
-C.proj_name = "OoD_Segmentation"
+C.proj_name = WANDB_PROJ
 
 # Your current experiment name
-C.experiment_name = "your_pebal_exp"
+C.experiment_name = WANDB_NAME
 
 # half pretrained_ckpts-loader upload images; loss upload every iteration
 C.upload_image_step = [0, int((C.num_train_imgs / C.batch_size) / 2)]

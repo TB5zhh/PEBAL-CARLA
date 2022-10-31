@@ -361,6 +361,9 @@ def load_model(model, model_file, is_restore=False,
 
         state_dict = new_state_dict
 
+    prune_keys = [i for i in state_dict.keys() if 'module.branch1.final' in i]
+    for i in prune_keys:
+        del state_dict[i]
     model.load_state_dict(state_dict, strict=strict)
     ckpt_keys = set(state_dict.keys())
     own_keys = set(model.state_dict().keys())

@@ -65,7 +65,7 @@ def main(gpu, ngpus_per_node, config, args):
     testing_transform = Compose([ToTensor(), Normalize(config.image_mean, config.image_std)])
     fishyscapes_ls = Fishyscapes(split='LostAndFound', root=config.fishy_root_path, transform=testing_transform)
     fishyscapes_static = Fishyscapes(split='Static', root=config.fishy_root_path, transform=testing_transform)
-    cityscapes = Cityscapes(root=config.city_root_path, split="val", transform=testing_transform)
+    # cityscapes = Cityscapes(root=config.city_root_path, split="val", transform=testing_transform)
 
     # config lr policy
     base_lr = config.lr
@@ -74,7 +74,7 @@ def main(gpu, ngpus_per_node, config, args):
     trainer = Trainer(engine=engine, loss1=gambler_loss, loss2=energy_loss, lr_scheduler=lr_policy,
                       ckpt_dir=config.saved_dir, tensorboard=visual_tool)
 
-    evaluator = SlidingEval(config, device=0 if engine.local_rank < 0 else engine.local_rank)
+    # evaluator = SlidingEval(config, device=0 if engine.local_rank < 0 else engine.local_rank)
 
     if engine.distributed:
         torch.cuda.set_device(engine.local_rank)

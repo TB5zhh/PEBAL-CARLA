@@ -107,8 +107,10 @@ def get_mix_loader(engine, collate_fn=None, augment=True, cs_root=None,
                    coco_root=None):
     train_preprocess = TrainPre(config.image_mean, config.image_std, augment=augment)
 
-    train_dataset = CityscapesCocoMix(split='train', preprocess=train_preprocess, cs_root=cs_root,
-                                      coco_root=coco_root, subsampling_factor=0.1)
+    # train_dataset = CityscapesCocoMix(split='train', preprocess=train_preprocess, cs_root=cs_root,
+    #                                   coco_root=coco_root, subsampling_factor=0.1)
+
+    train_dataset = CARLASimulated('/data/anomaly_dataset_v2', '/data/filelists/minimal', preprocess=train_preprocess)
 
     train_sampler = None
     is_shuffle = True
@@ -737,3 +739,47 @@ class CityscapesCocoMix(BaseDataset):
         fmt_str += 'COCO Split: %s\n' % self.coco_split
         fmt_str += '----Number of images: %d\n' % len(self.coco)
         return fmt_str.strip()
+
+class CARLASimulated(BaseDataset):
+    void_ind = [254]
+
+    def __init__(self, dataset_root, filelist_dir, preprocess):
+        self.dataset_root = dataset_root
+        self.filelist_dir = filelist_dir
+        self.preprocess = preprocess
+        def read(filepath: str) -> list:
+            with open(filepath) as f:
+                return [i.strip() for i in f.readlines()]
+        self.images = []
+        self.images += read(os.path.join(self.filelist_dir, 'train_seg_image.txt')) 
+        self.images += read(os.path.join(self.filelist_dir, 'train_ood_image.txt'))
+        self.targets = []
+        self.targets += read(os.path.join(self.filelist_dir, 'train_seg_labels.txt')) 
+        self.targets += read(os.path.join(self.filelist_dir, 'train_ood_labels.txt'))
+    
+
+    def __getitem__(self, index):
+        image = np.array(Image.open(os.path.join(self.dataset_root, self.images[index])))
+        target = np.array(Image.open(os.path.join(self.dataset_root, self.targets[index]))).astype(np.uint8)
+        target[target == 23] = 254
+        is_ood = (target == 254).any()
+        img, gt, _, extra_dict = self.preprocess(image, target)
+        img = torch.from_numpy(np.ascontiguousarray(img)).float()
+        gt = torch.from_numpy(np.ascontiguousarray(gt)).long()
+        if extra_dict is not None:
+            for k, v in extra_dict.items():
+                extra_dict[k] = torch.from_numpy(np.ascontiguousarray(v))
+                if 'label' in k:
+                    extra_dict[k] = extra_dict[k].long()
+                if 'img' in k:
+                    extra_dict[k] = extra_dict[k].float()
+
+
+        # from IPython import embed
+        # embed()
+        ret_dict = dict(data=img, label=gt, fn=self.targets[index], n=len(self.images), is_ood=is_ood)
+        ret_dict.update(**extra_dict)
+        return ret_dict
+
+    def __len__(self):
+        return len(self.images)

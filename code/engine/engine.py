@@ -156,7 +156,7 @@ class Engine(object):
         if eval:
             self.state.model = on_load_checkpoint(model=self.state.model, checkpoint=tmp['model'])
         else:
-            self.state.model = load_model(self.state.model, tmp['state_dict'], True, strict=True,
+            self.state.model = load_model(self.state.model, tmp['state_dict'], True, strict=False,
                                           extra_channel=extra_channel)
 
         self.state.epoch = 0  # tmp['epoch'] + 1

@@ -1,2 +1,4 @@
 ckpts/
 **/__pycache__/
+wandb/
+code/config/secret.py
